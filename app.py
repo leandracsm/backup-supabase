@@ -169,12 +169,12 @@ def executar_backup_completo():
         STATUS_BACKUP = "rodando"
 
         print("➡️ ETAPA 1: backup_tabela")
-        backup_tabela()
+        #backup_tabela()
         print("✔ backup_tabela OK")
         print("-------------")
 
         print("➡️ ETAPA 2: backup_csv Colecoes_Leandra")
-        #backup_csv("Colecoes_Leandra")
+        backup_csv("Colecoes_Leandra")
         print("✔ Colecoes_Leandra OK")
         print("-------------")
 
