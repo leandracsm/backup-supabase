@@ -150,16 +150,11 @@ def gerar_zip():
 
     print("🗜️ Gerando ZIP...")
 
-    nome_zip = "colecoes_supabase_bkp"
-
-    # remove zip antigo
-    if os.path.exists(f"{nome_zip}.zip"):
-        os.remove(f"{nome_zip}.zip")
+    nome_zip = "/tmp/colecoes_supabase_bkp"
 
     shutil.make_archive(nome_zip, "zip", PASTA_BACKUP)
 
-    print(f"✅ ZIP criado: {nome_zip}.zip")
-
+    print(f"✅ ZIP criado em: {nome_zip}.zip")
 # =========================
 # EXECUTAR BACKUP COMPLETO
 # =========================
