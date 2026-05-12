@@ -179,7 +179,7 @@ def executar_backup_completo():
         print("-------------")
 
         print("➡️ ETAPA 3: backup_csv listapaises")
-        backup_csv("listapaises")
+        #backup_csv("listapaises")
         print("✔ listapaises OK")
         print("-------------")
 
