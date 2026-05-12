@@ -179,7 +179,7 @@ def executar_backup_completo():
 
         print("-------------")
 
-        baixar_imagens()
+        {*/baixar_imagens()*/}
 
         print("-------------")
 
