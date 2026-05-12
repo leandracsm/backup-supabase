@@ -2,3 +2,10 @@ fastapi
 uvicorn
 requests
 python-dotenv
+flask
+supabase
+httpx
+postgrest
+gotrue
+storage3
+realtime
