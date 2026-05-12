@@ -6,7 +6,7 @@ import requests
 from dotenv import load_dotenv
 from supabase import create_client
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 # =========================
@@ -54,7 +54,7 @@ def backup_tabela(nome_tabela="Colecoes_Leandra"):
 
     response = supabase.table(nome_tabela).select("*").execute()
     print("RESPOSTA:", response)
-    
+
     dados = response.data
 
     if not dados:
@@ -97,7 +97,7 @@ def backup_csv(nome_tabela):
 
 
 # =========================
-# GERAR ZIP
+# ZIP
 # =========================
 
 def gerar_zip():
@@ -108,7 +108,11 @@ def gerar_zip():
 
     shutil.make_archive(nome_zip, "zip", PASTA_BACKUP)
 
-    print(f"✅ ZIP criado em: {nome_zip}.zip")
+    zip_path = f"{nome_zip}.zip"
+
+    print(f"✅ ZIP criado em: {zip_path}")
+
+    return zip_path
 
 
 # =========================
@@ -119,10 +123,11 @@ def executar_backup_completo():
 
     global STATUS_BACKUP
 
+    STATUS_BACKUP = "rodando"
+
     try:
 
         print("🔵 INICIO BACKUP")
-        STATUS_BACKUP = "rodando"
 
         print("➡️ ETAPA 1: backup_tabela")
         backup_tabela()
@@ -140,17 +145,21 @@ def executar_backup_completo():
         print("-------------")
 
         print("➡️ ETAPA 4: gerar_zip")
-        gerar_zip()
+        zip_path = gerar_zip()
         print("✔ ZIP OK")
         print("-------------")
 
         STATUS_BACKUP = "concluido"
+
         print("🎉 BACKUP FINALIZADO COM SUCESSO")
+
+        return zip_path
 
     except Exception as e:
 
         STATUS_BACKUP = "erro"
         print("❌ ERRO BACKUP:", str(e))
+        return None
 
 
 # =========================
@@ -162,12 +171,19 @@ def executar_backup():
 
     try:
 
-        executar_backup_completo()
+        zip_path = executar_backup_completo()
 
-        return {
-            "success": True,
-            "message": "Backup executado com sucesso"
-        }
+        if not zip_path or not os.path.exists(zip_path):
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "error": "ZIP não encontrado"}
+            )
+
+        return FileResponse(
+            path=zip_path,
+            filename="backup_supabase.zip",
+            media_type="application/zip"
+        )
 
     except Exception as e:
 
