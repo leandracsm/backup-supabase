@@ -108,8 +108,10 @@ def gerar_zip():
 
     shutil.make_archive(nome_zip, "zip", PASTA_BACKUP)
 
-    zip_path = f"{nome_zip}.zip"
+    zip_path = executar_backup_completo()
 
+    print("ZIP PATH FINAL:", zip_path)
+    print("EXISTS:", os.path.exists(zip_path))
     print(f"✅ ZIP criado em: {zip_path}")
 
     return zip_path
