@@ -174,12 +174,12 @@ def executar_backup_completo():
         print("-------------")
 
         print("➡️ ETAPA 2: backup_csv Colecoes_Leandra")
-        backup_csv("Colecoes_Leandra")
+        #backup_csv("Colecoes_Leandra")
         print("✔ Colecoes_Leandra OK")
         print("-------------")
 
         print("➡️ ETAPA 3: backup_csv listapaises")
-        #backup_csv("listapaises")
+        backup_csv("listapaises")
         print("✔ listapaises OK")
         print("-------------")
 
