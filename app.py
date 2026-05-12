@@ -18,6 +18,9 @@ load_dotenv()
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
+print("SUPABASE_URL:", SUPABASE_URL)
+print("SUPABASE_KEY EXISTS:", bool(SUPABASE_KEY))
+
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 BUCKET = "fotos"
@@ -50,6 +53,8 @@ def backup_tabela(nome_tabela="Colecoes_Leandra"):
     print("📦 Buscando dados da tabela...")
 
     response = supabase.table(nome_tabela).select("*").execute()
+    print("RESPOSTA:", response)
+    
     dados = response.data
 
     if not dados:
