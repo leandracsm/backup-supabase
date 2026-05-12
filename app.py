@@ -23,7 +23,8 @@ supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 BUCKET = "fotos"
 PASTA = "removidas"
 
-PASTA_BACKUP = "backup"
+PASTA_BACKUP = "/tmp/backup"
+os.makedirs(PASTA_BACKUP, exist_ok=True)
 PASTA_FOTOS = f"{PASTA_BACKUP}/fotos"
 
 app = FastAPI()
