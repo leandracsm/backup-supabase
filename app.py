@@ -165,37 +165,44 @@ def executar_backup_completo():
 
     try:
 
+        print("🔵 INICIO BACKUP")
         STATUS_BACKUP = "rodando"
 
+        print("➡️ ETAPA 1: backup_tabela")
         backup_tabela()
-
+        print("✔ backup_tabela OK")
         print("-------------")
 
+        print("➡️ ETAPA 2: backup_csv Colecoes_Leandra")
         backup_csv("Colecoes_Leandra")
-
+        print("✔ Colecoes_Leandra OK")
         print("-------------")
 
+        print("➡️ ETAPA 3: backup_csv listapaises")
         backup_csv("listapaises")
-
+        print("✔ listapaises OK")
         print("-------------")
 
-        {*/baixar_imagens()*/}
-
+        # print("➡️ ETAPA 4: baixar_imagens (DESATIVADO)")
+        # baixar_imagens()
+        # print("✔ imagens OK")
         print("-------------")
 
+        print("➡️ ETAPA 5: gerar_zip")
         gerar_zip()
-
+        print("✔ ZIP OK")
         print("-------------")
 
         STATUS_BACKUP = "concluido"
 
-        print("🎉 Backup completo finalizado!")
+        print("🎉 BACKUP FINALIZADO COM SUCESSO")
 
-    except Exception as e:
+        except Exception as e:
 
         STATUS_BACKUP = "erro"
 
-        print("ERRO BACKUP:", str(e))
+        print("❌ ERRO BACKUP:", str(e))
+        
         
 # =========================
 # API
