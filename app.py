@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from supabase import create_client
 
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 # =========================
@@ -82,7 +82,7 @@ def backup_tabela(nome_tabela="Colecoes_Leandra"):
     with open(arquivo_json, "w", encoding="utf-8") as f:
         json.dump(dados, f, ensure_ascii=False, indent=2)
 
-    print(f"✅ JSON salvo")
+    print("✅ JSON salvo")
 
 
 def backup_csv(nome_tabela):
@@ -207,17 +207,10 @@ def backup():
                 content={"success": False, "error": "Falha ao gerar ZIP"}
             )
 
-        def iterfile():
-            with open(zip_path, "rb") as f:
-                while chunk := f.read(1024 * 1024):
-                    yield chunk
-
-        return StreamingResponse(
-            iterfile(),
-            media_type="application/zip",
-            headers={
-                "Content-Disposition": "attachment; filename=backup_supabase.zip"
-            }
+        return FileResponse(
+            path=zip_path,
+            filename="backup_supabase.zip",
+            media_type="application/zip"
         )
 
     except Exception as e:
