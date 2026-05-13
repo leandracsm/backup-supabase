@@ -3,14 +3,13 @@ import json
 import csv
 import shutil
 import requests
+
 from dotenv import load_dotenv
 from supabase import create_client
 
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-
-import io
 
 # =========================
 # CONFIG
@@ -41,12 +40,9 @@ os.makedirs(PASTA_FOTOS, exist_ok=True)
 
 app = FastAPI()
 
-# CORS PRODUÇÃO
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://projcolecoes-q36lbedxq-projleandra.vercel.app",
-    ],
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -55,10 +51,12 @@ app.add_middleware(
 STATUS_BACKUP = "parado"
 
 # =========================
-# LIMPAR PASTA BACKUP
+# LIMPAR BACKUP ANTIGO
 # =========================
 
 def limpar_backup_antigo():
+
+    print("🧹 Limpando backup antigo...")
 
     if os.path.exists(PASTA_BACKUP):
         shutil.rmtree(PASTA_BACKUP)
@@ -255,6 +253,8 @@ def status_backup():
 @app.get("/backup")
 def executar_backup():
 
+    global STATUS_BACKUP
+
     try:
 
         zip_path = executar_backup_completo()
@@ -277,15 +277,10 @@ def executar_backup():
                 }
             )
 
-        with open(zip_path, "rb") as f:
-            zip_bytes = f.read()
-
-        return StreamingResponse(
-            io.BytesIO(zip_bytes),
-            media_type="application/zip",
-            headers={
-                "Content-Disposition": "attachment; filename=backup_supabase.zip"
-            }
+        return FileResponse(
+            path=zip_path,
+            filename="backup_supabase.zip",
+            media_type="application/zip"
         )
 
     except Exception as e:
