@@ -3,6 +3,7 @@ import json
 import csv
 import shutil
 import requests
+import time
 
 from dotenv import load_dotenv
 from supabase import create_client
@@ -34,6 +35,9 @@ PASTA_FOTOS = f"{PASTA_BACKUP}/fotos"
 os.makedirs(PASTA_BACKUP, exist_ok=True)
 os.makedirs(PASTA_FOTOS, exist_ok=True)
 
+# ZIP FINAL FIXO (IMPORTANTE PARA EVITAR CRDOWNLOAD BUG)
+ZIP_PATH = "/tmp/backup_supabase.zip"
+
 # =========================
 # APP
 # =========================
@@ -51,11 +55,10 @@ app.add_middleware(
 STATUS_BACKUP = "parado"
 
 # =========================
-# LIMPAR BACKUP ANTIGO
+# LIMPAR BACKUP
 # =========================
 
 def limpar_backup_antigo():
-
     print("🧹 Limpando backup antigo...")
 
     if os.path.exists(PASTA_BACKUP):
@@ -69,11 +72,9 @@ def limpar_backup_antigo():
 # =========================
 
 def backup_tabela(nome_tabela="Colecoes_Leandra"):
-
     print(f"📦 Backup JSON: {nome_tabela}")
 
     response = supabase.table(nome_tabela).select("*").execute()
-
     dados = response.data
 
     if not dados:
@@ -92,11 +93,9 @@ def backup_tabela(nome_tabela="Colecoes_Leandra"):
 # =========================
 
 def backup_csv(nome_tabela):
-
     print(f"📄 Backup CSV: {nome_tabela}")
 
     response = supabase.table(nome_tabela).select("*").execute()
-
     dados = response.data
 
     if not dados:
@@ -108,24 +107,20 @@ def backup_csv(nome_tabela):
     colunas = dados[0].keys()
 
     with open(arquivo_csv, "w", newline="", encoding="utf-8-sig") as f:
-
         writer = csv.DictWriter(f, fieldnames=colunas)
-
         writer.writeheader()
         writer.writerows(dados)
 
     print(f"✅ CSV salvo: {arquivo_csv}")
 
 # =========================
-# BAIXAR IMAGENS
+# IMAGENS
 # =========================
 
 def baixar_imagens():
-
     print("📸 Baixando imagens...")
 
     try:
-
         arquivos = supabase.storage.from_(BUCKET).list(PASTA)
 
         if not arquivos:
@@ -137,7 +132,6 @@ def baixar_imagens():
         for i, file in enumerate(arquivos, start=1):
 
             nome = file["name"]
-
             caminho_storage = f"{PASTA}/{nome}"
 
             print(f"⬇️ ({i}/{total}) {caminho_storage}")
@@ -158,27 +152,29 @@ def baixar_imagens():
         print("✅ Imagens baixadas")
 
     except Exception as e:
-
         print("❌ ERRO IMAGENS:", str(e))
 
 # =========================
-# GERAR ZIP
+# GERAR ZIP (FIX REAL)
 # =========================
 
 def gerar_zip():
 
     print("🗜️ Gerando ZIP...")
 
-    nome_zip = "/tmp/colecoes_supabase_bkp"
+    # garante que não fica lixo antigo
+    if os.path.exists(ZIP_PATH):
+        os.remove(ZIP_PATH)
 
-    shutil.make_archive(nome_zip, "zip", PASTA_BACKUP)
+    shutil.make_archive("/tmp/backup_supabase", "zip", PASTA_BACKUP)
 
-    zip_path = f"{nome_zip}.zip"
+    # pequena garantia de flush de filesystem (IMPORTANTE NA VERCEL)
+    time.sleep(0.5)
 
-    print("ZIP PATH:", zip_path)
-    print("ZIP EXISTS:", os.path.exists(zip_path))
+    print("ZIP PATH:", ZIP_PATH)
+    print("ZIP EXISTS:", os.path.exists(ZIP_PATH))
 
-    return zip_path
+    return ZIP_PATH
 
 # =========================
 # BACKUP COMPLETO
@@ -189,34 +185,19 @@ def executar_backup_completo():
     global STATUS_BACKUP
 
     try:
-
         STATUS_BACKUP = "rodando"
 
         print("🔵 INICIO BACKUP")
 
         limpar_backup_antigo()
 
-        print("-------------")
-
         backup_tabela("Colecoes_Leandra")
-
-        print("-------------")
-
         backup_csv("Colecoes_Leandra")
-
-        print("-------------")
-
         backup_csv("listapaises")
-
-        print("-------------")
 
         baixar_imagens()
 
-        print("-------------")
-
         zip_path = gerar_zip()
-
-        print("-------------")
 
         STATUS_BACKUP = "concluido"
 
@@ -225,30 +206,21 @@ def executar_backup_completo():
         return zip_path
 
     except Exception as e:
-
         STATUS_BACKUP = "erro"
-
         print("❌ ERRO BACKUP:", str(e))
-
         return None
 
 # =========================
-# API
+# ROTAS
 # =========================
 
 @app.get("/")
 def home():
-
-    return {
-        "status": "API ONLINE"
-    }
+    return {"status": "API ONLINE"}
 
 @app.get("/status")
 def status_backup():
-
-    return {
-        "status": STATUS_BACKUP
-    }
+    return {"status": STATUS_BACKUP}
 
 @app.get("/backup")
 def executar_backup():
@@ -256,48 +228,29 @@ def executar_backup():
     global STATUS_BACKUP
 
     try:
-
         zip_path = executar_backup_completo()
 
-        if not zip_path:
+        if not zip_path or not os.path.exists(zip_path):
             return JSONResponse(
                 status_code=500,
-                content={
-                    "success": False,
-                    "error": "Falha ao gerar ZIP"
-                }
+                content={"success": False, "error": "Falha ao gerar ZIP"}
             )
-
-        if not os.path.exists(zip_path):
-            return JSONResponse(
-                status_code=500,
-                content={
-                    "success": False,
-                    "error": "ZIP não encontrado"
-                }
-            )
-
-        from fastapi.responses import FileResponse
 
         return FileResponse(
             path=zip_path,
             filename="backup_supabase.zip",
-            media_type="application/octet-stream",
+            media_type="application/zip",
             headers={
                 "Content-Disposition": "attachment; filename=backup_supabase.zip"
             }
         )
 
     except Exception as e:
-
         STATUS_BACKUP = "erro"
 
         print("❌ ERRO API:", str(e))
 
         return JSONResponse(
             status_code=500,
-            content={
-                "success": False,
-                "error": str(e)
-            }
+            content={"success": False, "error": str(e)}
         )
