@@ -167,7 +167,8 @@ def executar_backup_completo():
 # =========================
 # API
 # =========================
-from fastapi.responses import FileResponse
+from fastapi.responses import StreamingResponse
+import io
 
 @app.get("/backup")
 def executar_backup():
@@ -180,12 +181,16 @@ def executar_backup():
             content={"success": False, "error": "ZIP não encontrado"}
         )
 
-    return FileResponse(
-        path=zip_path,
-        filename="backup_supabase.zip",
-        media_type="application/zip"
-    )
+    with open(zip_path, "rb") as f:
+        zip_bytes = f.read()
 
+    return StreamingResponse(
+        io.BytesIO(zip_bytes),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": "attachment; filename=backup_supabase.zip"
+        }
+    )
     except Exception as e:
 
         print("ERRO API:", str(e))
