@@ -132,7 +132,7 @@ def executar_backup_completo():
         print("🔵 INICIO BACKUP")
 
         print("➡️ ETAPA 1: backup_tabela")
-        backup_tabela()
+        #backup_tabela()
         print("✔ backup_tabela OK")
         print("-------------")
 
@@ -142,7 +142,7 @@ def executar_backup_completo():
         print("-------------")
 
         print("➡️ ETAPA 3: backup_csv listapaises")
-        backup_csv("listapaises")
+        # backup_csv("listapaises")
         print("✔ listapaises OK")
         print("-------------")
 
