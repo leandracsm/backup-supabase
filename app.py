@@ -2,6 +2,7 @@ import os
 import json
 import csv
 import shutil
+import requests
 from dotenv import load_dotenv
 from supabase import create_client
 from fastapi import FastAPI
@@ -24,7 +25,10 @@ print("SUPABASE_KEY EXISTS:", bool(SUPABASE_KEY))
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 PASTA_BACKUP = "/tmp/backup"
+PASTA_FOTOS = f"{PASTA_BACKUP}/fotos"
+
 os.makedirs(PASTA_BACKUP, exist_ok=True)
+os.makedirs(PASTA_FOTOS, exist_ok=True)
 
 app = FastAPI()
 
@@ -89,6 +93,40 @@ def backup_csv(nome_tabela):
 
 
 # =========================
+# BAIXAR IMAGENS DO STORAGE
+# =========================
+
+def baixar_imagens():
+
+    print("📸 Baixando imagens do Storage...")
+
+    arquivos = supabase.storage.from_("fotos").list("removidas")
+
+    if not arquivos:
+        print("⚠️ Nenhuma imagem encontrada.")
+        return
+
+    for file in arquivos:
+
+        nome = file["name"]
+
+        caminho = f"removidas/{nome}"
+
+        url = supabase.storage.from_("fotos").get_public_url(caminho)
+
+        try:
+            img_data = requests.get(url).content
+
+            with open(f"{PASTA_FOTOS}/{nome}", "wb") as f:
+                f.write(img_data)
+
+            print("⬇️ imagem:", nome)
+
+        except Exception as e:
+            print("❌ erro imagem:", nome, str(e))
+
+
+# =========================
 # ZIP
 # =========================
 
@@ -103,7 +141,6 @@ def gerar_zip():
     zip_path = f"{nome_zip}.zip"
 
     print("📦 ZIP criado:", zip_path)
-    print("EXISTS:", os.path.exists(zip_path))
 
     return zip_path
 
@@ -125,6 +162,8 @@ def executar_backup_completo():
         backup_tabela("Colecoes_Leandra")
         backup_csv("Colecoes_Leandra")
         backup_csv("listapaises")
+
+        baixar_imagens()
 
         zip_path = gerar_zip()
 
