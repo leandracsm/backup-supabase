@@ -167,25 +167,24 @@ def executar_backup_completo():
 # =========================
 # API
 # =========================
+from fastapi.responses import FileResponse
 
 @app.get("/backup")
 def executar_backup():
 
-    try:
+    zip_path = executar_backup_completo()
 
-        zip_path = executar_backup_completo()
-
-        if not zip_path or not os.path.exists(zip_path):
-            return JSONResponse(
-                status_code=500,
-                content={"success": False, "error": "ZIP não encontrado"}
-            )
-
-        return FileResponse(
-            path=zip_path,
-            filename="backup_supabase.zip",
-            media_type="application/zip"
+    if not zip_path or not os.path.exists(zip_path):
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": "ZIP não encontrado"}
         )
+
+    return FileResponse(
+        path=zip_path,
+        filename="backup_supabase.zip",
+        media_type="application/zip"
+    )
 
     except Exception as e:
 
