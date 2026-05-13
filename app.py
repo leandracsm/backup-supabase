@@ -2,12 +2,12 @@ import os
 import json
 import csv
 import shutil
-import requests
 from dotenv import load_dotenv
 from supabase import create_client
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
+import io
 
 # =========================
 # CONFIG
@@ -23,14 +23,8 @@ print("SUPABASE_KEY EXISTS:", bool(SUPABASE_KEY))
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-BUCKET = "fotos"
-PASTA = "removidas"
-
 PASTA_BACKUP = "/tmp/backup"
-PASTA_FOTOS = f"{PASTA_BACKUP}/fotos"
-
 os.makedirs(PASTA_BACKUP, exist_ok=True)
-os.makedirs(PASTA_FOTOS, exist_ok=True)
 
 app = FastAPI()
 
@@ -45,28 +39,26 @@ app.add_middleware(
 STATUS_BACKUP = "parado"
 
 # =========================
-# BACKUP JSON
+# BACKUP TABELA (JSON)
 # =========================
 
 def backup_tabela(nome_tabela="Colecoes_Leandra"):
 
-    print("📦 Buscando dados da tabela...")
+    print(f"📦 Backup tabela: {nome_tabela}")
 
     response = supabase.table(nome_tabela).select("*").execute()
-    print("RESPOSTA:", response)
-
     dados = response.data
 
     if not dados:
         print("⚠️ Nenhum dado encontrado.")
         return
 
-    arquivo_json = f"{PASTA_BACKUP}/{nome_tabela}_backup.json"
+    path = f"{PASTA_BACKUP}/{nome_tabela}.json"
 
-    with open(arquivo_json, "w", encoding="utf-8") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(dados, f, ensure_ascii=False, indent=2)
 
-    print(f"✅ JSON salvo em: {arquivo_json}")
+    print(f"✅ JSON salvo: {path}")
 
 
 # =========================
@@ -75,7 +67,7 @@ def backup_tabela(nome_tabela="Colecoes_Leandra"):
 
 def backup_csv(nome_tabela):
 
-    print(f"📄 Gerando CSV: {nome_tabela}")
+    print(f"📄 Backup CSV: {nome_tabela}")
 
     response = supabase.table(nome_tabela).select("*").execute()
     dados = response.data
@@ -84,16 +76,16 @@ def backup_csv(nome_tabela):
         print("⚠️ Nenhum dado encontrado.")
         return
 
-    arquivo_csv = f"{PASTA_BACKUP}/{nome_tabela}_backup.csv"
+    path = f"{PASTA_BACKUP}/{nome_tabela}.csv"
 
     colunas = dados[0].keys()
 
-    with open(arquivo_csv, "w", newline="", encoding="utf-8-sig") as f:
+    with open(path, "w", newline="", encoding="utf-8-sig") as f:
         writer = csv.DictWriter(f, fieldnames=colunas)
         writer.writeheader()
         writer.writerows(dados)
 
-    print(f"✅ CSV salvo em: {arquivo_csv}")
+    print(f"✅ CSV salvo: {path}")
 
 
 # =========================
@@ -104,15 +96,14 @@ def gerar_zip():
 
     print("🗜️ Gerando ZIP...")
 
-    nome_zip = "/tmp/colecoes_supabase_bkp"
+    nome_zip = "/tmp/backup_supabase"
 
     shutil.make_archive(nome_zip, "zip", PASTA_BACKUP)
 
-    zip_path = executar_backup_completo()
+    zip_path = f"{nome_zip}.zip"
 
-    print("ZIP PATH FINAL:", zip_path)
+    print("📦 ZIP criado:", zip_path)
     print("EXISTS:", os.path.exists(zip_path))
-    print(f"✅ ZIP criado em: {zip_path}")
 
     return zip_path
 
@@ -131,29 +122,15 @@ def executar_backup_completo():
 
         print("🔵 INICIO BACKUP")
 
-        print("➡️ ETAPA 1: backup_tabela")
-        backup_tabela()
-        print("✔ backup_tabela OK")
-        print("-------------")
-
-        print("➡️ ETAPA 2: backup_csv Colecoes_Leandra")
+        backup_tabela("Colecoes_Leandra")
         backup_csv("Colecoes_Leandra")
-        print("✔ Colecoes_Leandra OK")
-        print("-------------")
-
-        print("➡️ ETAPA 3: backup_csv listapaises")
         backup_csv("listapaises")
-        print("✔ listapaises OK")
-        print("-------------")
 
-        print("➡️ ETAPA 4: gerar_zip")
         zip_path = gerar_zip()
-        print("✔ ZIP OK")
-        print("-------------")
 
         STATUS_BACKUP = "concluido"
 
-        print("🎉 BACKUP FINALIZADO COM SUCESSO")
+        print("🎉 BACKUP FINALIZADO")
 
         return zip_path
 
@@ -165,32 +142,33 @@ def executar_backup_completo():
 
 
 # =========================
-# API
+# API BACKUP (DOWNLOAD)
 # =========================
-from fastapi.responses import StreamingResponse
-import io
 
 @app.get("/backup")
 def executar_backup():
 
-    zip_path = executar_backup_completo()
+    try:
 
-    if not zip_path or not os.path.exists(zip_path):
-        return JSONResponse(
-            status_code=500,
-            content={"success": False, "error": "ZIP não encontrado"}
+        zip_path = executar_backup_completo()
+
+        if not zip_path or not os.path.exists(zip_path):
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "error": "ZIP não encontrado"}
+            )
+
+        with open(zip_path, "rb") as f:
+            zip_bytes = f.read()
+
+        return StreamingResponse(
+            io.BytesIO(zip_bytes),
+            media_type="application/zip",
+            headers={
+                "Content-Disposition": "attachment; filename=backup_supabase.zip"
+            }
         )
 
-    with open(zip_path, "rb") as f:
-        zip_bytes = f.read()
-
-    return StreamingResponse(
-        io.BytesIO(zip_bytes),
-        media_type="application/zip",
-        headers={
-            "Content-Disposition": "attachment; filename=backup_supabase.zip"
-        }
-    )
     except Exception as e:
 
         print("ERRO API:", str(e))
@@ -203,6 +181,10 @@ def executar_backup():
             }
         )
 
+
+# =========================
+# STATUS
+# =========================
 
 @app.get("/status")
 def status_backup():
