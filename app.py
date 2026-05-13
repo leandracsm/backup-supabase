@@ -192,7 +192,6 @@ def home():
 def status():
     return {"status": STATUS_BACKUP}
 
-
 @app.get("/backup")
 def backup():
 
@@ -204,13 +203,16 @@ def backup():
         if not zip_path or not os.path.exists(zip_path):
             return JSONResponse(
                 status_code=500,
-                content={"success": False, "error": "Falha ao gerar ZIP"}
+                content={"error": "ZIP não encontrado"}
             )
 
         return FileResponse(
             path=zip_path,
             filename="backup_supabase.zip",
-            media_type="application/zip"
+            media_type="application/zip",
+            headers={
+                "Cache-Control": "no-store"
+            }
         )
 
     except Exception as e:
