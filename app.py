@@ -162,6 +162,18 @@ def executar_backup_completo():
         print("❌ ERRO:", str(e))
         return None
 
+def deletar_zip_storage():
+
+    try:
+        supabase.storage.from_("backup").remove(
+            ["backup_supabase.zip"]
+        )
+
+        print("🗑️ ZIP removido do storage")
+
+    except Exception as e:
+        print("❌ ERRO AO REMOVER ZIP:", str(e))
+
 # =========================
 # ROTAS
 # =========================
@@ -197,4 +209,24 @@ def backup():
         return JSONResponse(
             status_code=500,
             content={"error": str(e)}
+        )
+
+@app.get("/deletar_backup")
+def deletar_backup():
+
+    try:
+        deletar_zip_storage()
+
+        return {
+            "success": True
+        }
+
+    except Exception as e:
+
+        return JSONResponse(
+            status_code=500,
+            content={
+                "success": False,
+                "error": str(e)
+            }
         )
